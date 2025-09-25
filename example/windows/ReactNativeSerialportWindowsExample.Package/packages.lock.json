@@ -53,10 +53,10 @@
       "reactnativeserialportwindows": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.ReactNative": "[0.76.3-Fabric, )",
-          "Microsoft.ReactNative.Cxx": "[0.76.3-Fabric, )",
+          "Microsoft.ReactNative": "[0.76.16-Fabric, )",
+          "Microsoft.ReactNative.Cxx": "[0.76.16-Fabric, )",
           "Microsoft.VCRTForwarders.140": "[1.0.2-rc, )",
-          "Microsoft.WindowsAppSDK": "[1.6.240923002, )",
+          "Microsoft.WindowsAppSDK": "[1.7.250401001, )",
           "boost": "[1.83.0, )"
         }
       },

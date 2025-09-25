@@ -1,116 +1,160 @@
-import { Text, View, StyleSheet, Button } from 'react-native';
+// @ts-nocheck
+import React, { useEffect, useState } from 'react';
 import {
-  listPorts,
-  openPort,
-  eventEmitter,
-} from 'react-native-serialport-windows';
-import { useState, useEffect } from 'react';
+  SafeAreaView,
+  Text,
+  View,
+  StyleSheet,
+  Button,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
+import { listPorts } from 'react-native-serial-windows';
+import { useSerialPort, SerialPortProvider } from './SerialPortProvider';
 
-const byteArrayToString = (data: number[]): string => {
-  return String.fromCharCode(...data);
-};
-
-export default function App() {
+/**
+ * Screen that lists all serial ports and allows connecting / disconnecting.
+ */
+const SerialPortScreen: React.FC = () => {
+  const { connectToPorts, send, close, receivedData, clearData } =
+    useSerialPort();
   const [ports, setPorts] = useState<string[]>([]);
-  const [error, setError] = useState<string>('');
-  const [selectedPort, setSelectedPort] = useState<string>('');
-  const [receivedData, setReceivedData] = useState<string>('');
+  const [connectingPort, setConnectingPort] = useState<string | null>(null);
+  const [connectedPorts, setConnectedPorts] = useState<Set<string>>(new Set());
 
+  // Load available ports on mount
   useEffect(() => {
-    const getPorts = async () => {
+    async function fetchPorts() {
       try {
-        const availablePorts = await listPorts();
-        setPorts(availablePorts);
-        if (availablePorts.length > 0) {
-          setSelectedPort(availablePorts[0] || '');
-        }
+        const available = await listPorts();
+        setPorts(available);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to list ports');
+        console.error('Failed to list ports', err);
       }
-    };
-    getPorts();
+    }
+    fetchPorts();
   }, []);
 
-  useEffect(() => {
-    const subscription = eventEmitter.addListener(
-      'SerialPortDataReceived',
-      ({ data }) => {
-        const text = byteArrayToString(data);
-        setReceivedData((prevData) => prevData + text);
-      }
-    );
-
-    return () => subscription.remove();
-  }, []);
-
-  const handleOpenPort = async () => {
-    if (!selectedPort) return;
-
+  const handleConnect = async (port: string) => {
+    setConnectingPort(port);
     try {
-      await openPort(selectedPort, 9600, 8, 1, 0, 0);
-      console.log('Port opened successfully');
+      await connectToPorts([
+        {
+          portName: port,
+          baudRate: 9600,
+          dataBits: 8,
+          stopBits: 1,
+          parity: 0,
+          flowControl: 0,
+        },
+      ]);
+      setConnectedPorts((prev) => new Set(prev).add(port));
     } catch (err) {
-      console.error('Error opening port:', err);
-      setError(err instanceof Error ? err.message : 'Failed to open port');
+      console.error(`Could not open ${port}`, err);
+    } finally {
+      setConnectingPort(null);
     }
   };
 
+  const handleDisconnect = (port: string) => {
+    close(port);
+    setConnectedPorts((prev) => {
+      const next = new Set(prev);
+      next.delete(port);
+      return next;
+    });
+    clearData(port);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Available Ports:</Text>
-      {error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : (
-        <>
-          {ports.map((port, index) => (
-            <Text key={index} style={styles.port}>
-              {port}
-            </Text>
-          ))}
-          {selectedPort && (
-            <Button title={`Open ${selectedPort}`} onPress={handleOpenPort} />
-          )}
-          {receivedData && (
-            <View style={styles.dataContainer}>
-              <Text style={styles.header}>Received Data:</Text>
-              <Text style={styles.data}>{receivedData}</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Available Serial Ports</Text>
+
+      <FlatList
+        data={ports}
+        keyExtractor={(item) => item}
+        renderItem={({ item }) => {
+          const isConnected = connectedPorts.has(item);
+          const lastData = receivedData[item] || '';
+
+          return (
+            <View style={styles.portRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.portName}>{item}</Text>
+                {lastData !== '' && (
+                  <Text style={styles.dataText}>Last received: {lastData}</Text>
+                )}
+              </View>
+
+              {isConnected ? (
+                <>
+                  <Button
+                    title="Disconnect"
+                    onPress={() => handleDisconnect(item)}
+                  />
+                  <Button
+                    title="Send Test"
+                    onPress={() => send(item, 'Hello world\n')}
+                  />
+                </>
+              ) : (
+                <View style={{ minWidth: 100 }}>
+                  {connectingPort === item ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Button
+                      title="Connect"
+                      onPress={() => handleConnect(item)}
+                    />
+                  )}
+                </View>
+              )}
             </View>
-          )}
-        </>
-      )}
-    </View>
+          );
+        }}
+        ListEmptyComponent={
+          <Text style={{ marginTop: 20 }}>No serial ports found</Text>
+        }
+      />
+    </SafeAreaView>
   );
-}
+};
+
+/**
+ * Root App: wraps the SerialPortScreen with the SerialPortProvider.
+ */
+const App: React.FC = () => {
+  return (
+    <SerialPortProvider>
+      <SerialPortScreen />
+    </SerialPortProvider>
+  );
+};
+
+export default App;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
-  header: {
-    fontSize: 16,
+  title: {
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  port: {
-    marginTop: 5,
+  portRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  portName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dataText: {
     fontSize: 14,
-  },
-  error: {
-    color: 'red',
-    marginTop: 10,
-  },
-  dataContainer: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
-    width: '100%',
-  },
-  data: {
-    fontFamily: 'monospace',
-    fontSize: 12,
+    color: '#333',
   },
 });

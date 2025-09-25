@@ -1,1 +1,1 @@
-{"version":3,"names":["TurboModuleRegistry","getEnforcing"],"sourceRoot":"..\\..\\src","sources":["NativeSerialportWindows.ts"],"mappings":";;AACA,SAASA,mBAAmB,QAAQ,cAAc;AAkBlD,eAAeA,mBAAmB,CAACC,YAAY,CAC7C,8BACF,CAAC","ignoreList":[]}
+{"version":3,"names":["TurboModuleRegistry","getEnforcing"],"sourceRoot":"..\\..\\src","sources":["NativeSerialportWindows.ts"],"mappings":";;AACA,SAASA,mBAAmB,QAAQ,cAAc;AAsBlD,eAAeA,mBAAmB,CAACC,YAAY,CAC7C,8BACF,CAAC","ignoreList":[]}

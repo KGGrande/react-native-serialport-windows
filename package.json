@@ -1,5 +1,5 @@
 {
-  "name": "react-native-serialport-windows",
+  "name": "react-native-serial-windows",
   "version": "1.0.0",
   "description": "Serial Communication for React Native Windows",
   "source": "./src/index.tsx",
@@ -20,6 +20,7 @@
   "files": [
     "src",
     "lib",
+    "windows",
     "android",
     "ios",
     "cpp",
@@ -53,14 +54,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MihirGrand/react-native-serialport-windows.git"
+    "url": "git+https://github.com/KGGrande/react-native-serialport-windows.git"
   },
-  "author": "Mihir J <mihirgrand@gmail.com> (https://github.com/MihirGrand)",
+  "author": "Mihir J <KGGrande@hormel.com> (https://github.com/KGGrande)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/MihirGrand/react-native-serialport-windows/issues"
+    "url": "https://github.com/KGGrande/react-native-serialport-windows/issues"
   },
-  "homepage": "https://github.com/MihirGrand/react-native-serialport-windows#readme",
+  "homepage": "https://github.com/KGGrande/react-native-serialport-windows#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
