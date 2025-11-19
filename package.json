@@ -44,6 +44,7 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
+    "codegen": "react-native codegen-windows",
     "release": "release-it"
   },
   "keywords": [
@@ -56,7 +57,7 @@
     "type": "git",
     "url": "git+https://github.com/KGGrande/react-native-serialport-windows.git"
   },
-  "author": "Mihir J <KGGrande@hormel.com> (https://github.com/KGGrande)",
+  "author": "Kyle Grande <KGGrande@hormel.com> (https://github.com/KGGrande)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/KGGrande/react-native-serialport-windows/issues"
@@ -164,7 +165,6 @@
     "source": "src",
     "output": "lib",
     "targets": [
-      "codegen",
       [
         "commonjs",
         {
