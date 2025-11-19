@@ -115,8 +115,8 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
     timeouts.ReadIntervalTimeout = MAXDWORD;
     timeouts.ReadTotalTimeoutMultiplier = 0;
     timeouts.ReadTotalTimeoutConstant = 0;
-    timeouts.WriteTotalTimeoutMultiplier = 0;
-    timeouts.WriteTotalTimeoutConstant = 0;
+    timeouts.WriteTotalTimeoutMultiplier = 10;
+    timeouts.WriteTotalTimeoutConstant = 200;
 
     if (!SetCommTimeouts(m_handle, &timeouts)) {
         close();
