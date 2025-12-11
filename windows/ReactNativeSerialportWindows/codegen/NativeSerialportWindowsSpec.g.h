@@ -9,11 +9,19 @@
 #pragma once
 // clang-format off
 
-
+// #include "NativeSerialportWindowsDataTypes.g.h" before this file to use the generated type definition
 #include <NativeModules.h>
 #include <tuple>
 
 namespace ReactNativeSerialportWindowsCodegen {
+
+inline winrt::Microsoft::ReactNative::FieldMap GetStructInfo(SerialportWindowsSpec_SerialPortData*) noexcept {
+    winrt::Microsoft::ReactNative::FieldMap fieldMap {
+        {L"com", &SerialportWindowsSpec_SerialPortData::com},
+        {L"data", &SerialportWindowsSpec_SerialPortData::data},
+    };
+    return fieldMap;
+}
 
 struct SerialportWindowsSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
   static constexpr auto methods = std::tuple{
@@ -21,8 +29,7 @@ struct SerialportWindowsSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
       Method<void(std::string, double, double, double, double, double, Promise<std::string>) noexcept>{1, L"openPort"},
       Method<void(std::string, Promise<std::string>) noexcept>{2, L"closePort"},
       Method<void(std::string, std::vector<double>, Promise<bool>) noexcept>{3, L"write"},
-      Method<void(std::string) noexcept>{4, L"addListener"},
-      Method<void(double) noexcept>{5, L"removeListeners"},
+      EventEmitter<void(SerialportWindowsSpec_SerialPortData)>{4, L"onSerialPortDataReceived"},
   };
 
   template <class TModule>
@@ -49,16 +56,10 @@ struct SerialportWindowsSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
           "write",
           "    REACT_METHOD(write) void write(std::string portName, std::vector<double> const & data, ::React::ReactPromise<bool> &&result) noexcept { /* implementation */ }\n"
           "    REACT_METHOD(write) static void write(std::string portName, std::vector<double> const & data, ::React::ReactPromise<bool> &&result) noexcept { /* implementation */ }\n");
-    REACT_SHOW_METHOD_SPEC_ERRORS(
+    REACT_SHOW_EVENTEMITTER_SPEC_ERRORS(
           4,
-          "addListener",
-          "    REACT_METHOD(addListener) void addListener(std::string eventType) noexcept { /* implementation */ }\n"
-          "    REACT_METHOD(addListener) static void addListener(std::string eventType) noexcept { /* implementation */ }\n");
-    REACT_SHOW_METHOD_SPEC_ERRORS(
-          5,
-          "removeListeners",
-          "    REACT_METHOD(removeListeners) void removeListeners(double count) noexcept { /* implementation */ }\n"
-          "    REACT_METHOD(removeListeners) static void removeListeners(double count) noexcept { /* implementation */ }\n");
+          "onSerialPortDataReceived",
+          "    REACT_EVENT(onSerialPortDataReceived) std::function<void(SerialportWindowsSpec_SerialPortData)> onSerialPortDataReceived;\n");
   }
 };
 

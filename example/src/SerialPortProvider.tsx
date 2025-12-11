@@ -9,12 +9,7 @@ import React, {
   useRef, // added
   useMemo,
 } from 'react';
-import {
-  openPort,
-  closePort,
-  write,
-  eventEmitter,
-} from 'react-native-serial-windows';
+import { openPort, closePort, write } from 'react-native-serial-windows';
 import NativeSerialportWindows from '../../src/NativeSerialportWindows';
 type SerialPortConfig = {
   portName: string;
@@ -64,12 +59,10 @@ export const SerialPortProvider: React.FC<ProviderProps> = ({ children }) => {
 
   useEffect(() => {
     console.log('SerialportWindows TurboModule:', NativeSerialportWindows);
-    const subscription = eventEmitter.addListener(
-      'SerialPortDataReceived',
+    const subscription = NativeSerialportWindows.onSerialPortDataReceived?.(
       ({ port, data }) => {
         const key = normalizePort(port);
-        console.log('here2');
-        // Ensure a buffer exists for this port
+        console.log(data);
         if (!buffersRef.current[key]) {
           buffersRef.current[key] = '';
         }
@@ -77,32 +70,25 @@ export const SerialPortProvider: React.FC<ProviderProps> = ({ children }) => {
         for (let i = 0; i < data.length; i++) {
           const byte = data[i];
           const char = String.fromCharCode(byte);
-          console.info(`Received byte from ${port}:`, byte, char);
 
           // Treat 10 (LF), 13 (CR), and 12 (FF) as terminators
           if (byte !== 10 && byte !== 13 && byte !== 12) {
-            // Append only printable characters (ASCII 32+)
             if (byte >= 32) {
               buffersRef.current[key] += char;
-              console.info(
-                `Current buffer for ${key}:`,
-                buffersRef.current[key]
-              );
             }
           } else {
-            // Terminator encountered: finalize message for this port
             const finalMsg = buffersRef.current[key] || '';
-            console.info(`Final input from ${port} (key=${key}):`, finalMsg);
             setReceivedData((prev) => ({ ...prev, [key]: finalMsg }));
             setDataTimestamp((prev) => ({ ...prev, [key]: Date.now() }));
-            // Clear buffer for that port
             buffersRef.current[key] = '';
           }
         }
       }
     );
 
-    return () => subscription.remove();
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   const connectToPorts = useCallback(async (configs: SerialPortConfig[]) => {
