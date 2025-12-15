@@ -112,9 +112,9 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
     }
 
     COMMTIMEOUTS timeouts = { 0 };
-    timeouts.ReadIntervalTimeout = MAXDWORD;
-    timeouts.ReadTotalTimeoutMultiplier = 0;
-    timeouts.ReadTotalTimeoutConstant = 0;
+    timeouts.ReadIntervalTimeout = 50;          // max gap between bytes in a packet (ms)
+    timeouts.ReadTotalTimeoutMultiplier = 0;    // no per-byte extra timeout
+    timeouts.ReadTotalTimeoutConstant = 100;    // max wait per ReadFile (ms)
     timeouts.WriteTotalTimeoutMultiplier = 10;
     timeouts.WriteTotalTimeoutConstant = 200;
 
@@ -169,34 +169,47 @@ void SerialPort::startReading() {
 }
 
 void SerialPort::readThread() {
-    std::vector<uint8_t> buffer(1024);
-    DWORD bytesRead;
-    OVERLAPPED overlapped = { 0 };
-    overlapped.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    std::vector<uint8_t> buffer(4096);
 
-    while (m_isRunning) {
-        if (!ReadFile(m_handle, buffer.data(), buffer.size(), &bytesRead, &overlapped)) {
-            if (GetLastError() != ERROR_IO_PENDING) {
+    while (m_isRunning && isOpen()) {
+        DWORD bytesRead = 0;
+
+        BOOL ok = ReadFile(
+            m_handle,
+            buffer.data(),
+            static_cast<DWORD>(buffer.size()),
+            &bytesRead,
+            nullptr // synchronous
+        );
+
+        if (!ok) {
+            DWORD err = GetLastError();
+
+            // Expected when we cancel I/O during shutdown
+            if (err == ERROR_OPERATION_ABORTED && !m_isRunning) {
+                OutputDebugStringA("SerialPort::readThread - Read canceled (shutdown)\n");
                 break;
             }
 
-            if (WaitForSingleObject(overlapped.hEvent, 100) == WAIT_OBJECT_0) {
-                if (GetOverlappedResult(m_handle, &overlapped, &bytesRead, FALSE)) {
-                    if (bytesRead > 0 && m_dataCallback) {
-                        OutputDebugStringA(("Received " + std::to_string(bytesRead) + " bytes\n").c_str());
-                        m_dataCallback(std::vector<uint8_t>(buffer.begin(), buffer.begin() + bytesRead));
-                    }
-                }
-            }
-        } else if (bytesRead > 0 && m_dataCallback) {
-            OutputDebugStringA(("Received " + std::to_string(bytesRead) + " bytes\n").c_str());
+            OutputDebugStringA(
+                ("SerialPort::readThread - ReadFile failed, error: " +
+                 std::to_string(err) + "\n").c_str()
+            );
+            break;
+        }
+
+        if (bytesRead > 0 && m_dataCallback) {
+            // Avoid debug spam in production – this is very expensive at high throughput
+            // OutputDebugStringA(("Received " + std::to_string(bytesRead) + " bytes\n").c_str());
+
+            // If you want to avoid per-call allocations, we can improve this further (see below)
             m_dataCallback(std::vector<uint8_t>(buffer.begin(), buffer.begin() + bytesRead));
         }
-        ResetEvent(overlapped.hEvent);
     }
 
-    CloseHandle(overlapped.hEvent);
+    OutputDebugStringA("SerialPort::readThread - exiting\n");
 }
+
 
 void SerialPort::stopReading() {
     m_isRunning = false;
