@@ -15,7 +15,7 @@
 namespace winrt::ReactNativeSerialportWindows
 {
 
-    REACT_MODULE(ReactNativeSerialportWindows)
+    REACT_TURBO_MODULE(ReactNativeSerialportWindows)
         struct ReactNativeSerialportWindows
     {
         using ModuleSpec = ReactNativeSerialportWindowsCodegen::SerialportWindowsSpec;
@@ -42,6 +42,14 @@ namespace winrt::ReactNativeSerialportWindows
 
         REACT_METHOD(removeListeners)
             void removeListeners(double count) noexcept;
+        //REACT_EVENT(SerialPortDataReceived, L"SerialPortDataReceived")
+        //  std::function<...> SerialPortDataReceived;
+        //Or
+         /* REACT_EVENT(SerialPortDataReceived, L"SerialPortDataReceived")
+          std::function<void(winrt::Microsoft::ReactNative::JSValue const&)> SerialPortDataReceived;*/
+        REACT_EVENT(onSerialPortDataReceived)
+          std::function<void(winrt::Microsoft::ReactNative::JSValue const&)>
+          onSerialPortDataReceived;
 
         void OnDataReceived(const std::string& portName, const std::vector<uint8_t>& data);
 

@@ -1,12 +1,16 @@
-import { NativeEventEmitter } from 'react-native';
+/* eslint-disable prettier/prettier */
+// import { NativeEventEmitter } from 'react-native';
 import SerialportWindows from './NativeSerialportWindows';
-
-export const eventEmitter = new NativeEventEmitter(SerialportWindows);
-
+import type {SerialPortData} from './NativeSerialportWindows'
+// export const eventEmitter = new NativeEventEmitter(SerialportWindows);
+export function subscribeSerialPortData(
+  listener: (event: SerialPortData) => void
+) {
+  return SerialportWindows.onSerialPortDataReceived(listener);
+}
 export function listPorts(): Promise<string[]> {
   return SerialportWindows.listPorts();
 }
-
 export function openPort(
   portName: string,
   baudRate: number,
@@ -24,11 +28,9 @@ export function openPort(
     flowControl
   );
 }
-
 export function closePort(portName: string): Promise<string> {
   return SerialportWindows.closePort(portName); // <-- updated
 }
-
 export function write(portName: string, data: number[]): Promise<boolean> {
   return SerialportWindows.write(portName, data); // <-- updated
 }

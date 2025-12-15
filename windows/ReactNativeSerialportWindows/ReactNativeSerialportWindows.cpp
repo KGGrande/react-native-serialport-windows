@@ -143,19 +143,26 @@ namespace winrt::ReactNativeSerialportWindows {
         }
     }
 
-    void ReactNativeSerialportWindows::OnDataReceived(const std::string& portName, const std::vector<uint8_t>& data) {
-        if (m_context) {
-            auto eventData = winrt::Microsoft::ReactNative::JSValueObject();
-            winrt::Microsoft::ReactNative::JSValueArray jsDataArray;
-            for (auto byte : data) {
-                jsDataArray.push_back(static_cast<int>(byte));
-            }
+    void ReactNativeSerialportWindows::OnDataReceived(
+      const std::string& portName,
+      const std::vector<uint8_t>& data) {
 
-            eventData["port"] = portName;
-            eventData["data"] = std::move(jsDataArray);
+      using namespace winrt::Microsoft::ReactNative;
 
-            m_context.EmitJSEvent(L"RCTDeviceEventEmitter", L"SerialPortDataReceived", eventData);
-        }
+      JSValueObject eventData;
+      JSValueArray jsDataArray;
+      jsDataArray.reserve(data.size());
+
+      for (auto byte : data) {
+        jsDataArray.push_back(static_cast<int>(byte));
+      }
+
+      eventData["port"] = portName;
+      eventData["data"] = std::move(jsDataArray);
+
+      if (onSerialPortDataReceived) {
+        onSerialPortDataReceived(JSValue(std::move(eventData)));
+      }
     }
 
     void ReactNativeSerialportWindows::addListener(std::string eventName) noexcept {
