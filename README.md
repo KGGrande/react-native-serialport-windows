@@ -1,90 +1,87 @@
-# [react-native-serialport-windows](https://www.npmjs.com/package/react-native-serialport-windows)
+# [react-native-serialport-windows](https://github.com/KGGrande/react-native-serialport-windows)
 
-Serial Communication for React Native Windows apps
+Serial communication for React Native Windows apps.
+
+This repo publishes to npm as [`react-native-serial-windows`](https://www.npmjs.com/package/react-native-serial-windows).
 
 ## Installation
 
 ```sh
-npm install react-native-serialport-windows
+npm install react-native-serial-windows
 ```
 
-```js
+```ts
 import {
   listPorts,
   openPort,
   closePort,
   write,
-  eventEmitter,
-} from 'react-native-serialport-windows';
+  subscribeSerialPortData,
+} from 'react-native-serial-windows';
 ```
 
 ## Usage
 
-### 1. List available ports
+### List available ports
 
-#### Retrieve a list of all available serial ports:
-
-```js
-const availablePorts = await listPorts();
+```ts
+const availablePorts = await listPorts(); // e.g. ["COM3", "COM4"]
 ```
 
-### 1. Open a port
+### Open a port
 
-#### Open a port with the desired settings:
-
-```js
-await openPort('COM1', 9600, 8, 1, 0, 0);
+```ts
+await openPort('COM3', 9600, 8, 1, 0, 0);
 // Parameters: portName, baudRate, dataBits, stopBits, parity, flowControl
 ```
 
-### 2. Write data
+### Write data
 
-#### Send data to the serial port. Data should be an array of byte values:
+`write` takes the target port name and an array of bytes (`number[]`).
 
-```js
-const data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]; // "Hello"
-await write(data);
+```ts
+await write('COM3', [0x48, 0x65, 0x6c, 0x6c, 0x6f]); // "Hello"
 ```
 
-### 3. Receive data
+To send a string, use `TextEncoder`:
 
-#### Listen for incoming data using the eventEmitter:
+```ts
+const bytes = Array.from(new TextEncoder().encode('Hello world\n'));
+await write('COM3', bytes);
+```
 
-```js
+### Receive data
+
+Subscribe to incoming bytes via `subscribeSerialPortData`. The callback receives:
+
+- `port`: the port name (e.g. `"COM3"`)
+- `data`: an array of byte values (`number[]`)
+
+```ts
 useEffect(() => {
-  const subscription = eventEmitter.addListener(
-    'SerialPortDataReceived',
-    ({ data }) => {
-      const text = String.fromCharCode(...data);
-      console.log('Received:', text);
-    }
-  );
-
-  return () => subscription.remove();
+  const sub = subscribeSerialPortData(({ port, data }) => {
+    console.log('Received from', port, data);
+  });
+  return () => sub.remove();
 }, []);
 ```
 
-### 4. Close the port
+### Close the port
 
-#### When finished, ensure the port is closed:
-
-```js
-await closePort();
+```ts
+await closePort('COM3');
 ```
 
-## Example
+## Example app
 
 ```sh
-git clone https://github.com/MihirGrand/react-native-serialport-windows.git
-
+git clone https://github.com/KGGrande/react-native-serialport-windows.git
 cd react-native-serialport-windows
-
-npm install
-
+yarn
 cd example
-
-npm run windows
+yarn windows
 ```
+
 ![react-native-serialport-windows](https://github.com/user-attachments/assets/f5349528-211a-4d91-88d6-725ac754725f)
 
 ## Contributing
