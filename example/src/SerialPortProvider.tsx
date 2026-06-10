@@ -26,8 +26,8 @@ type SerialPortConfig = {
 };
 
 type SerialPortContextType = {
-  close: (portname: string) => void;
-  send: (portName: string, data: string) => void;
+  close: (portname: string) => Promise<void>;
+  send: (portName: string, data: string) => Promise<boolean>;
   clearData: (portName?: string) => void;
   connectToPorts: (configs: SerialPortConfig[]) => void;
   receivedData: Record<string, string>;
@@ -126,22 +126,24 @@ export const SerialPortProvider: React.FC<ProviderProps> = ({ children }) => {
     }
   }, []); // stable
 
-  const close = useCallback((portName: string) => {
-    closePort(portName)
-      .then(() => console.info(`Port ${portName} closed`))
-      .catch((err) =>
-        console.error(`Failed to close ${portName}${err.message}`)
-      );
+  const close = useCallback(async (portName: string) => {
+    try {
+      await closePort(portName);
+      console.info(`Port ${portName} closed`);
+    } catch (err) {
+      console.error(`Failed to close ${portName}${err.message}`);
+    }
   }, []); // stable
 
-  const send = useCallback((portName: string, data: string) => {
+  // Resolves with the native write result: false means the write failed or
+  // only partially completed (e.g. stalled printer hit the COMMTIMEOUTS
+  // ceiling). Rejects if the port is not open.
+  const send = useCallback(async (portName: string, data: string) => {
     const encoder = new TextEncoder();
     const byteArray = Array.from(encoder.encode(data));
-    write(portName, byteArray)
-      .then(() => console.info(`Sent to ${portName}:`, data))
-      .catch((err) =>
-        console.error(`Failed to send to ${portName} ${err.message}`)
-      );
+    const ok = await write(portName, byteArray);
+    console.info(`Sent to ${portName} (${byteArray.length} bytes):`, ok);
+    return ok;
   }, []); // stable
 
   const clearData = useCallback((portName?: string) => {

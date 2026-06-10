@@ -5,6 +5,7 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 class SerialPort {
 public:
@@ -32,6 +33,13 @@ private:
 
     std::string m_portName;
     HANDLE m_handle;
+    // Serializes write() against close() and against concurrent writes to the
+    // same port: prevents byte-level interleaving (corrupted output) when two
+    // callers write to one port, and guarantees an in-flight write finishes
+    // before close() destroys the handle. It does NOT promise FIFO ordering of
+    // writes — per-port ordering is guaranteed by the JS-side
+    // dispatchQueuedJobs grouping, which is load-bearing for label integrity.
+    std::mutex m_ioMutex;
     std::atomic<bool> m_isRunning;
     std::thread m_readThread;
     DataReceivedCallback m_dataCallback;
