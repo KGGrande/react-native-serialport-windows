@@ -62,7 +62,7 @@ namespace winrt::ReactNativeSerialportWindows {
                 portName = "\\\\.\\" + portName;
             }
 
-            auto serialPort = std::make_unique<SerialPort>(portName);
+            auto serialPort = std::make_shared<SerialPort>(portName);
 
             int winStopBits = static_cast<int>(stopBits);
             int winParity = static_cast<int>(parity);
@@ -79,7 +79,10 @@ namespace winrt::ReactNativeSerialportWindows {
                 serialPort->setDataReceivedCallback([this, portName](const std::vector<uint8_t>& data) {
                     OnDataReceived(portName, data);
                     });
-                m_serialPorts[portName] = std::move(serialPort);
+                {
+                    std::scoped_lock lock(m_portsMutex);
+                    m_serialPorts[portName] = std::move(serialPort);
+                }
                 promise.Resolve("Port opened successfully");
             }
             else {
@@ -99,10 +102,20 @@ namespace winrt::ReactNativeSerialportWindows {
         if (portName.find("\\\\.\\") != 0) {
             portName = "\\\\.\\" + portName;
         }
-        auto it = m_serialPorts.find(portName);
-        if (it != m_serialPorts.end()) {
-            it->second->close();
-            m_serialPorts.erase(it);
+        std::shared_ptr<SerialPort> port;
+        {
+            std::scoped_lock lock(m_portsMutex);
+            auto it = m_serialPorts.find(portName);
+            if (it != m_serialPorts.end()) {
+                port = it->second;
+                m_serialPorts.erase(it);
+            }
+        }
+        if (port) {
+            // close() outside m_portsMutex: it may wait (via the port's
+            // m_ioMutex) for an in-flight background write to finish, and
+            // that wait must not block other ports' map operations.
+            port->close();
             promise.Resolve("Port closed successfully");
         }
         else {
@@ -110,19 +123,28 @@ namespace winrt::ReactNativeSerialportWindows {
         }
     }
 
-    void ReactNativeSerialportWindows::write(std::string portName, std::vector<double> const& data,
-        React::ReactPromise<bool>&& promise) noexcept {
+    winrt::fire_and_forget ReactNativeSerialportWindows::write(std::string portName, std::vector<double> data,
+        React::ReactPromise<bool> promise) noexcept {
         // Ensure portName format matches what's stored in m_serialPorts
         if (portName.find("\\\\.\\") != 0) {
             portName = "\\\\.\\" + portName;
         }
         OutputDebugStringA(("Attempting to write to port: " + portName + "\n").c_str());
 
-        auto it = m_serialPorts.find(portName);
-        if (it == m_serialPorts.end()) {
+        // Copy the shared_ptr out of the map while still on the JS thread, so
+        // closePort erasing the entry can't dangle the pointer after the hop.
+        std::shared_ptr<SerialPort> port;
+        {
+            std::scoped_lock lock(m_portsMutex);
+            auto it = m_serialPorts.find(portName);
+            if (it != m_serialPorts.end()) {
+                port = it->second;
+            }
+        }
+        if (!port) {
             OutputDebugStringA(("Port not open: " + portName + "\n").c_str());
             promise.Reject("Port not open");
-            return;
+            co_return;
         }
 
         std::vector<uint8_t> byteData;
@@ -131,7 +153,12 @@ namespace winrt::ReactNativeSerialportWindows {
             byteData.push_back(static_cast<uint8_t>(value));
         }
 
-        bool writeResult = it->second->write(byteData);
+        // Hop to the thread pool: the synchronous WriteFile can block up to
+        // the COMMTIMEOUTS ceiling on a stalled printer, and that must not
+        // happen on the JS thread. ReactPromise is safe to settle off-thread.
+        co_await winrt::resume_background();
+
+        bool writeResult = port->write(byteData);
         if (writeResult) {
             OutputDebugStringA(("WriteFile succeeded, bytes written: " + std::to_string(byteData.size()) + "\n").c_str());
             promise.Resolve(true);

@@ -115,8 +115,18 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
     timeouts.ReadIntervalTimeout = 50;          // max gap between bytes in a packet (ms)
     timeouts.ReadTotalTimeoutMultiplier = 0;    // no per-byte extra timeout
     timeouts.ReadTotalTimeoutConstant = 100;    // max wait per ReadFile (ms)
-    timeouts.WriteTotalTimeoutMultiplier = 10;
-    timeouts.WriteTotalTimeoutConstant = 200;
+    // The write timeouts below are the de facto native deadline for a stalled
+    // write (printer paused, paper out, CTS held): a synchronous WriteFile
+    // blocks for at most WriteTotalTimeoutConstant + WriteTotalTimeoutMultiplier
+    // * bytes (~200ms + 10ms/byte, i.e. ~10-20s for a 1-2KB label) and then
+    // returns with a partial byte count, which write() reports as failure.
+    // This bounds both how long a stalled write holds m_ioMutex and how long a
+    // queued write to the same port can wait behind it. If recovery time
+    // proves unacceptable on real hardware, the escalation path is overlapped
+    // I/O with CancelIoEx — not CancelSynchronousIo, which on a thread-pool
+    // thread can cancel an unrelated operation.
+    timeouts.WriteTotalTimeoutMultiplier = 10;  // per-byte write budget (ms)
+    timeouts.WriteTotalTimeoutConstant = 200;   // fixed write budget (ms)
 
     if (!SetCommTimeouts(m_handle, &timeouts)) {
         close();
@@ -130,6 +140,9 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
 
 void SerialPort::close() {
     stopReading();
+    // Taking m_ioMutex makes close() wait for an in-flight background write to
+    // finish before the handle dies (see m_ioMutex comment in SerialPort.h).
+    std::scoped_lock lock(m_ioMutex);
     if (m_handle != INVALID_HANDLE_VALUE) {
         CloseHandle(m_handle);
         m_handle = INVALID_HANDLE_VALUE;
@@ -137,6 +150,10 @@ void SerialPort::close() {
 }
 
 bool SerialPort::write(const std::vector<uint8_t>& data) {
+    // See m_ioMutex comment in SerialPort.h: serializes against close() and
+    // against concurrent writes to this port (no byte interleaving); FIFO
+    // ordering is the JS side's job.
+    std::scoped_lock lock(m_ioMutex);
     if (!isOpen()) {
         OutputDebugStringA("SerialPort::write - port not open\n");
         return false;
@@ -146,11 +163,19 @@ bool SerialPort::write(const std::vector<uint8_t>& data) {
         return false;
     }
 
-    DWORD bytesWritten;
+    DWORD bytesWritten = 0;
     BOOL result = WriteFile(m_handle, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr);
     if (!result) {
         DWORD err = GetLastError();
         OutputDebugStringA(("SerialPort::write - WriteFile failed with error code: " + std::to_string(err) + "\n").c_str());
+        return false;
+    }
+    // A synchronous serial write that hits the COMMTIMEOUTS ceiling returns
+    // TRUE with bytesWritten < size. A stalled printer (CTS held, paper out)
+    // must surface as failure, not silent truncation.
+    if (bytesWritten != data.size()) {
+        OutputDebugStringA(("SerialPort::write - partial write (timeout): " + std::to_string(bytesWritten) +
+            " of " + std::to_string(data.size()) + " bytes\n").c_str());
         return false;
     }
     OutputDebugStringA(("SerialPort::write - WriteFile succeeded, bytes written: " + std::to_string(bytesWritten) + "\n").c_str());
