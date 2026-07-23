@@ -1,7 +1,7 @@
 import type { TurboModule } from 'react-native';
 export interface Spec extends TurboModule {
     listPorts(): Promise<string[]>;
-    openPort(portName: string, baudRate: number, dataBits: number, stopBits: number, parity: number, flowControl: number): Promise<string>;
+    openPort(portName: string, baudRate: number, dataBits: number, stopBits: number, parity: number, flowControl: number, rtsEnable: boolean, dtrEnable: boolean, discardNull: boolean): Promise<string>;
     closePort(portName: string): Promise<string>;
     write(portName: string, data: Array<number>): Promise<boolean>;
     addListener(eventType: string): void;

@@ -31,6 +31,7 @@ namespace winrt::ReactNativeSerialportWindows
         REACT_METHOD(openPort)
             void openPort(std::string portName, double baudRate, double dataBits,
                 double stopBits, double parity, double flowControl,
+                bool rtsEnable, bool dtrEnable, bool discardNull,
                 React::ReactPromise<std::string>&& promise) noexcept;
 
         REACT_METHOD(closePort)

@@ -29,10 +29,16 @@ void applyFlowControl(DCB& dcb, SerialPort::FlowControl flowControl) {
             dcb.fOutX = FALSE;
             dcb.fInX = FALSE;
             break;
+        case SerialPort::FlowControl::HardwareSoftware:
+            dcb.fOutxCtsFlow = TRUE;
+            dcb.fOutX = TRUE;
+            dcb.fInX = TRUE;
+            break;
     }
 }
-bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::StopBits stopBits, 
-                     SerialPort::Parity parity, SerialPort::FlowControl flowControl) {
+bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::StopBits stopBits,
+                     SerialPort::Parity parity, SerialPort::FlowControl flowControl,
+                     bool rtsEnable, bool dtrEnable, bool discardNull) {
     if (m_handle != INVALID_HANDLE_VALUE) {
         close();
     }
@@ -80,13 +86,21 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
     dcb.fParity = (parity != SerialPort::Parity::None);
     // dcb.fOutxCtsFlow = FALSE;
     dcb.fOutxDsrFlow = FALSE;
-    dcb.fDtrControl = DTR_CONTROL_ENABLE;
+    dcb.fDtrControl = dtrEnable ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
     dcb.fDsrSensitivity = FALSE;
     dcb.fTXContinueOnXoff = TRUE;
     // dcb.fOutX = FALSE;
     // dcb.fInX = FALSE;
     dcb.fErrorChar = FALSE;
-    dcb.fRtsControl = RTS_CONTROL_ENABLE;
+    // With hardware flow control the driver owns the RTS line
+    // (matches .NET Handshake.RequestToSend); otherwise RTS is a static
+    // level from the terminal's RTS_ENABLED setting.
+    if (flowControl == FlowControl::Hardware || flowControl == FlowControl::HardwareSoftware) {
+        dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
+    } else {
+        dcb.fRtsControl = rtsEnable ? RTS_CONTROL_ENABLE : RTS_CONTROL_DISABLE;
+    }
+    dcb.fNull = discardNull;
     dcb.fAbortOnError = FALSE;
 
     std::ostringstream logStream;
@@ -100,6 +114,9 @@ bool SerialPort::open(int baudRate, SerialPort::DataBits dataBits, SerialPort::S
     logStream << "  fInX: " << dcb.fInX << "\n";
     logStream << "  fDtrControl: " << dcb.fDtrControl << "\n";
     logStream << "  fRtsControl: " << dcb.fRtsControl << "\n";
+    logStream << "  fNull: " << dcb.fNull << "\n";
+    logStream << "  rtsEnable: " << rtsEnable << "\n";
+    logStream << "  dtrEnable: " << dtrEnable << "\n";
 
     std::string logStr = logStream.str();
     OutputDebugStringA(logStr.c_str());

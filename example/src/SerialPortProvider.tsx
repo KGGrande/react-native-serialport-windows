@@ -23,6 +23,9 @@ type SerialPortConfig = {
   stopBits: number;
   parity: number;
   flowControl: number;
+  rtsEnable?: boolean;
+  dtrEnable?: boolean;
+  discardNull?: boolean;
 };
 
 type SerialPortContextType = {
@@ -107,8 +110,17 @@ export const SerialPortProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const connectToPorts = useCallback(async (configs: SerialPortConfig[]) => {
     for (const config of configs) {
-      const { portName, baudRate, dataBits, stopBits, parity, flowControl } =
-        config;
+      const {
+        portName,
+        baudRate,
+        dataBits,
+        stopBits,
+        parity,
+        flowControl,
+        rtsEnable = true,
+        dtrEnable = true,
+        discardNull = false,
+      } = config;
       try {
         await openPort(
           portName,
@@ -116,7 +128,10 @@ export const SerialPortProvider: React.FC<ProviderProps> = ({ children }) => {
           dataBits,
           stopBits,
           parity,
-          flowControl
+          flowControl,
+          rtsEnable,
+          dtrEnable,
+          discardNull
         );
         console.info(`Connected to ${portName}`);
       } catch (err: any) {
