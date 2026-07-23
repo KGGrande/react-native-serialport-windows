@@ -102,6 +102,9 @@ const SerialPortScreen: React.FC = () => {
           stopBits: 1,
           parity: 0,
           flowControl: 0,
+          rtsEnable: true,
+          dtrEnable: true,
+          discardNull: false,
         },
       ]);
       setConnectedPorts((prev) => new Set(prev).add(port));

@@ -54,6 +54,7 @@ namespace winrt::ReactNativeSerialportWindows {
 
     void ReactNativeSerialportWindows::openPort(std::string portName, double baudRate,
         double dataBits, double stopBits, double parity, double flowControl,
+        bool rtsEnable, bool dtrEnable, bool discardNull,
         React::ReactPromise<std::string>&& promise) noexcept {
         try {
             OutputDebugStringA(("Opening port: " + portName + "\n").c_str());
@@ -72,7 +73,10 @@ namespace winrt::ReactNativeSerialportWindows {
                 static_cast<SerialPort::DataBits>(static_cast<int>(dataBits)),
                 static_cast<SerialPort::StopBits>(winStopBits),
                 static_cast<SerialPort::Parity>(winParity),
-                static_cast<SerialPort::FlowControl>(static_cast<int>(flowControl))
+                static_cast<SerialPort::FlowControl>(static_cast<int>(flowControl)),
+                rtsEnable,
+                dtrEnable,
+                discardNull
             );
 
             if (success) {

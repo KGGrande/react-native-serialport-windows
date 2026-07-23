@@ -18,7 +18,7 @@ namespace ReactNativeSerialportWindowsCodegen {
 struct SerialportWindowsSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
   static constexpr auto methods = std::tuple{
       Method<void(Promise<std::vector<std::string>>) noexcept>{0, L"listPorts"},
-      Method<void(std::string, double, double, double, double, double, Promise<std::string>) noexcept>{1, L"openPort"},
+      Method<void(std::string, double, double, double, double, double, bool, bool, bool, Promise<std::string>) noexcept>{1, L"openPort"},
       Method<void(std::string, Promise<std::string>) noexcept>{2, L"closePort"},
       Method<void(std::string, std::vector<double>, Promise<bool>) noexcept>{3, L"write"},
       Method<void(std::string) noexcept>{4, L"addListener"},
@@ -37,8 +37,8 @@ struct SerialportWindowsSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
     REACT_SHOW_METHOD_SPEC_ERRORS(
           1,
           "openPort",
-          "    REACT_METHOD(openPort) void openPort(std::string portName, double baudRate, double dataBits, double stopBits, double parity, double flowControl, ::React::ReactPromise<std::string> &&result) noexcept { /* implementation */ }\n"
-          "    REACT_METHOD(openPort) static void openPort(std::string portName, double baudRate, double dataBits, double stopBits, double parity, double flowControl, ::React::ReactPromise<std::string> &&result) noexcept { /* implementation */ }\n");
+          "    REACT_METHOD(openPort) void openPort(std::string portName, double baudRate, double dataBits, double stopBits, double parity, double flowControl, bool rtsEnable, bool dtrEnable, bool discardNull, ::React::ReactPromise<std::string> &&result) noexcept { /* implementation */ }\n"
+          "    REACT_METHOD(openPort) static void openPort(std::string portName, double baudRate, double dataBits, double stopBits, double parity, double flowControl, bool rtsEnable, bool dtrEnable, bool discardNull, ::React::ReactPromise<std::string> &&result) noexcept { /* implementation */ }\n");
     REACT_SHOW_METHOD_SPEC_ERRORS(
           2,
           "closePort",

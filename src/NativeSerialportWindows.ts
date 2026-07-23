@@ -10,7 +10,10 @@ export interface Spec extends TurboModule {
     dataBits: number,
     stopBits: number,
     parity: number,
-    flowControl: number
+    flowControl: number,
+    rtsEnable: boolean,
+    dtrEnable: boolean,
+    discardNull: boolean
   ): Promise<string>;
 
   closePort(portName: string): Promise<string>; // <-- updated
